@@ -2,6 +2,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { connectDatabase } from "./database/database.js";
+import { logger } from "./utils/logger.js";
 
 export const app = express();
 const apiPrefix = "/api/v1";
@@ -12,6 +14,10 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
+
+logger.info("Connecting to database...");
+await connectDatabase();
+logger.info("Database connected successfully");
 
 app.get("/", (req, res) => {
   res.send("Backend working");
