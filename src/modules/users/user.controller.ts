@@ -21,4 +21,21 @@ export class UserController {
       data: response,
     });
   };
+
+  getMe = async (req: Request, res: Response) => {
+    return res.status(200).json({
+      status: true,
+      data: req.user,
+    });
+  };
+
+  refresh = async (req: Request, res: Response) => {
+    const { refreshToken } = req.body;
+
+    const response = await this.userService.refreshToken(refreshToken);
+    return res.status(200).json({
+      status: true,
+      data: response,
+    });
+  };
 }

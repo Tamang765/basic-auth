@@ -1,19 +1,24 @@
 import bcrypt from "bcryptjs";
 import { UserRepository } from "./repositories/user.repository.js";
 import type { LoginDTO } from "./validation/login.schema.js";
-import type { UserDTO, UserResponseDTO } from "./validation/user.schema.js";
+import type { UserDTO } from "./validation/user.schema.js";
 
-import jwt from "jsonwebtoken";
-import config from "../../config/config.js";
+import { TokenService } from "../../utils/jwt.js";
 import { logger } from "../../utils/logger.js";
+import type { sessionRepo } from "../sessions/Repositories/session.repository.js";
 
 export class UserService {
-  constructor(private userRepo: UserRepository) {}
+  constructor(
+    private userRepo: UserRepository,
+    private tokenService: TokenService,
+    private sessionRepo: sessionRepo,
+  ) {}
 
   async register(data: UserDTO) {
     try {
       const isEmailExists = await this.userRepo.findByEmail(data.email);
 
+      console.log(isEmailExists);
       if (isEmailExists) {
         throw new Error("Email exits, try diff one");
       }
@@ -38,7 +43,7 @@ export class UserService {
         email: user.email,
       };
     } catch (error) {
-      throw new Error();
+      throw new Error(error);
     }
   }
 
@@ -46,6 +51,7 @@ export class UserService {
     try {
       const { email, password } = data;
       const user = await this.userRepo.findByEmail(email);
+      console.log(user);
       if (!user) {
         throw new Error("Invalid Credentials");
       }
@@ -56,9 +62,17 @@ export class UserService {
         throw new Error("Invalid credentials");
       }
 
-      const token = await this.generateTokens(user);
+      const token = await this.tokenService.generateTokens(user);
 
-      const newUser = await this.sanitizeUser(user);
+      const newUser = await this.tokenService.sanitizeUser(user);
+      const hashedRefreshToken = await bcrypt.hash(token.refreshToken, 12);
+
+      const refactoredUserData = {
+        userId: newUser.id,
+        refreshToken: hashedRefreshToken,
+        isValid: true,
+      };
+      await this.sessionRepo.create(refactoredUserData);
       return {
         user: newUser,
         token,
@@ -69,30 +83,38 @@ export class UserService {
     }
   }
 
-  async generateTokens(user: UserResponseDTO) {
-    const payload = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    };
+  async refreshToken(token: string) {
+    try {
+      const decoded = await this.tokenService.verifyRefreshToken(token);
 
-    logger.info(payload);
-    //
-    const accessToken = jwt.sign(payload, config.jwt.secret, {
-      expiresIn: config.jwt.expire,
-    });
+      console.log(decoded, "kxa");
+      if (!decoded) {
+        throw new Error("Not Verified");
+      }
 
-    const refreshToken = jwt.sign({ userId: user.email }, config.jwt.secret, {
-      expiresIn: config.jwt.expire,
-    });
+      const sessionUser = await this.sessionRepo.findByUserId(decoded.id);
+      console.log(sessionUser, "sessionUser");
+      let validSession = null;
+      for (const sessions of sessionUser) {
+        console.log(token, sessions.refreshToken, "asd");
+        const match = await bcrypt.compare(token, sessions.refreshToken);
+        if (match) {
+          validSession = sessions;
+          break;
+        }
+      }
 
-    return { accessToken, refreshToken };
-  }
+      if (!validSession) {
+        throw new Error("Invalid Refresh Token");
+      }
 
-  async sanitizeUser(
-    user: UserResponseDTO,
-  ): Promise<Omit<UserResponseDTO, "password">> {
-    const { password, ...rest } = user as UserResponseDTO;
-    return rest;
+      const newToken = await this.tokenService.generateTokens(decoded);
+      return {
+        accessToken: newToken.accessToken,
+        refreshToken: newToken.refreshToken,
+      };
+    } catch (error) {
+      throw new Error(error);
+    }
   }
 }
