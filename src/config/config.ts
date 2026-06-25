@@ -22,7 +22,7 @@ const config: Config = {
   isProduction,
   port: process.env.PORT || 5005,
   jwtSecret: process.env.JWT_SECRET || "your-secret-key",
-  apiPrefix: process.env.API_PREFIX || "/api",
+  apiPrefix: process.env.API_PREFIX || "/v1/api",
   cors: {
     origin: process.env.CORS_ORIGIN || "*",
   },
@@ -31,7 +31,7 @@ const config: Config = {
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432,
     user: process.env.DB_USER || "postgres",
     password: process.env.DB_PASSWORD || "123456789",
-    database: process.env.DB_NAME || "dtis",
+    database: process.env.DB_NAME || "auth",
   },
   logging:
     process.env.DB_LOGGING === "true" || process.env.NODE_ENV === "development",

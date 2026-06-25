@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import config from "../config/config.js";
+import { entities } from "../entities.js";
 
 const appDataSource = new DataSource({
   type: "postgres",
@@ -8,6 +9,8 @@ const appDataSource = new DataSource({
   port: config.db.port || 5432,
   username: config.db.user,
   password: config.db.password,
+  entities: entities,
+  synchronize: true,
 });
 
 export default appDataSource;
@@ -22,4 +25,4 @@ const connectDatabase = async () => {
   }
 };
 
-export { connectDatabase };
+export { appDataSource, connectDatabase };

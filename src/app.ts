@@ -5,6 +5,8 @@ import helmet from "helmet";
 import { connectDatabase } from "./database/database.js";
 import { logger } from "./utils/logger.js";
 
+import UserRoute from "./modules/users/user.route.js";
+
 export const app = express();
 const apiPrefix = "/api/v1";
 
@@ -31,6 +33,8 @@ app.get("/health", (req, res) => {
     timeStamp: Date.now(),
   });
 });
+
+app.use(`${apiPrefix}/user`, UserRoute);
 
 app.use((req, res, next) => {
   next(new Error(`cant find req url`));
