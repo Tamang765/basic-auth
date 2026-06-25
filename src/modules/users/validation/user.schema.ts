@@ -7,3 +7,11 @@ export const userSchema = z.object({
     .string()
     .min(6, { message: "Password must be at least 6 characters long" }),
 });
+
+export const userResponseSchema = userSchema.extend({
+  id: z.string(),
+});
+
+export type UserDTO = z.infer<typeof userSchema>;
+
+export type UserResponseDTO = z.infer<typeof userResponseSchema>;

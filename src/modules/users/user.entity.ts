@@ -26,6 +26,3 @@ export class User {
   @UpdateDateColumn()
   declare updatedAt: Date;
 }
-
-
-

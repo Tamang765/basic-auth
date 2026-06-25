@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import { logger } from "../../utils/logger.js";
 import type { UserService } from "./user.service.js";
 
 export class UserController {
@@ -9,6 +8,15 @@ export class UserController {
     const response = await this.userService.register(req.body);
 
     return res.status(201).json({
+      status: true,
+      data: response,
+    });
+  };
+
+  login = async (req: Request, res: Response) => {
+    const response = await this.userService.login(req.body);
+
+    return res.status(200).json({
       status: true,
       data: response,
     });

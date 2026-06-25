@@ -3,7 +3,11 @@ const isProduction = process.env.NODE_ENV === "production";
 type Config = {
   isProduction: boolean;
   port: number | string;
-  jwtSecret: string;
+  jwt: {
+    secret: string;
+
+    expire: string;
+  };
   apiPrefix: string;
   cors: {
     origin: string;
@@ -21,7 +25,10 @@ type Config = {
 const config: Config = {
   isProduction,
   port: process.env.PORT || 5005,
-  jwtSecret: process.env.JWT_SECRET || "your-secret-key",
+  jwt: {
+    secret: process.env.JWT_SECRET || "your-secret-key",
+    expire: "6d" as const,
+  },
   apiPrefix: process.env.API_PREFIX || "/v1/api",
   cors: {
     origin: process.env.CORS_ORIGIN || "*",
@@ -33,6 +40,7 @@ const config: Config = {
     password: process.env.DB_PASSWORD || "123456789",
     database: process.env.DB_NAME || "auth",
   },
+
   logging:
     process.env.DB_LOGGING === "true" || process.env.NODE_ENV === "development",
 };

@@ -1,6 +1,11 @@
 import bcrypt from "bcryptjs";
-import type { UserDTO } from "./dto/user-dto.js";
 import { UserRepository } from "./repositories/user.repository.js";
+import type { LoginDTO } from "./validation/login.schema.js";
+import type { UserDTO, UserResponseDTO } from "./validation/user.schema.js";
+
+import jwt from "jsonwebtoken";
+import config from "../../config/config.js";
+import { logger } from "../../utils/logger.js";
 
 export class UserService {
   constructor(private userRepo: UserRepository) {}
@@ -35,5 +40,59 @@ export class UserService {
     } catch (error) {
       throw new Error();
     }
+  }
+
+  async login(data: LoginDTO) {
+    try {
+      const { email, password } = data;
+      const user = await this.userRepo.findByEmail(email);
+      if (!user) {
+        throw new Error("Invalid Credentials");
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+
+      if (!isValidPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      const token = await this.generateTokens(user);
+
+      const newUser = await this.sanitizeUser(user);
+      return {
+        user: newUser,
+        token,
+      };
+    } catch (error) {
+      logger.error(error, "error login");
+      throw new Error(error);
+    }
+  }
+
+  async generateTokens(user: UserResponseDTO) {
+    const payload = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    };
+
+    logger.info(payload);
+    //
+    const accessToken = jwt.sign(payload, config.jwt.secret, {
+      expiresIn: config.jwt.expire,
+    });
+
+    const refreshToken = jwt.sign({ userId: user.email }, config.jwt.secret, {
+      expiresIn: config.jwt.expire,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  async sanitizeUser(
+    user: UserResponseDTO,
+  ): Promise<Omit<UserResponseDTO, "password">> {
+    const { password, ...rest } = user as UserResponseDTO;
+    return rest;
   }
 }

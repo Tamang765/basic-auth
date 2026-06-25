@@ -16,7 +16,6 @@ export class UserRepository {
   }
 
   create(data: Partial<User>) {
-    console.log("object");
     return this.repo.save(this.repo.create(data));
   }
 }
