@@ -3,6 +3,7 @@ import { UserRepository } from "./repositories/user.repository.js";
 import type { LoginDTO } from "./validation/login.schema.js";
 import type { UserDTO } from "./validation/user.schema.js";
 
+import { generateToken } from "../../utils/generate-token.js";
 import { TokenService } from "../../utils/jwt.js";
 import { logger } from "../../utils/logger.js";
 import type { sessionRepo } from "../sessions/Repositories/session.repository.js";
@@ -31,16 +32,22 @@ export class UserService {
 
       const password = await bcrypt.hash(data.password, 10);
 
+      const { token, hash } = generateToken();
+
       const user = await this.userRepo.create({
         name: data.name,
         email: data.email,
         password,
+        emailToken: hash,
+        emailTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 30), // 30 min
       });
 
       return {
         id: user.id,
         name: user.name,
         email: user.email,
+        emailToken: user.emailToken,
+        emailTokenExpiresAt: user.emailTokenExpiresAt,
       };
     } catch (error) {
       throw new Error(error);
@@ -116,5 +123,25 @@ export class UserService {
     } catch (error) {
       throw new Error(error);
     }
+  }
+
+  async verifyEmail(token: string) {
+    // const { hash } = generateToken();
+
+    // console.log(hash);
+    const isUser = await this.userRepo.findByEmailToken(token);
+    if (!isUser) {
+      throw new Error("Invalid token");
+    }
+
+    if (isUser.emailTokenExpiresAt && isUser.emailTokenExpiresAt < new Date()) {
+      throw new Error("Token is expired, try again");
+    }
+
+    await this.userRepo.update(isUser.id, {
+      isVerified: true,
+      emailToken: null,
+      emailTokenExpiresAt: null,
+    });
   }
 }

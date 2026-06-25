@@ -38,4 +38,17 @@ export class UserController {
       data: response,
     });
   };
+
+  verify = async (req: Request, res: Response) => {
+    const token = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const response = await this.userService.verifyEmail(token);
+
+    return res.status(200).json({
+      status: true,
+      data: response,
+    });
+  };
 }

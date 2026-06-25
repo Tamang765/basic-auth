@@ -11,5 +11,6 @@ router.post("/register", validate(userSchema), UserModule.controller.register);
 router.post("/login", validate(loginSchema), UserModule.controller.login);
 router.get("/me", authMiddleware, UserModule.controller.getMe);
 router.post("/refresh", authMiddleware, UserModule.controller.refresh);
+router.post(`/verify/:id`, authMiddleware, UserModule.controller.verify);
 
 export default router;

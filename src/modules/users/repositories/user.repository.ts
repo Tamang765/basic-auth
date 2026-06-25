@@ -15,7 +15,20 @@ export class UserRepository {
     });
   }
 
+  findByEmailToken(token: string) {
+    console.log(token, "tokenss");
+    return this.repo.findOne({
+      where: {
+        emailToken: token,
+      },
+    });
+  }
+
   create(data: Partial<User>) {
     return this.repo.save(this.repo.create(data));
+  }
+
+  update(id: string, data: Partial<User>) {
+    return this.repo.update(id, data);
   }
 }
