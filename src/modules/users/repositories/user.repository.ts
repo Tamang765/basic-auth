@@ -6,6 +6,9 @@ export class UserRepository {
   findByEmail(email: string) {
     return this.repo.findOne({ where: { email } });
   }
+  findById(id: string) {
+    return this.repo.findOne({ where: { id } });
+  }
 
   findByUserName(name: string) {
     return this.repo.findOne({
@@ -19,6 +22,13 @@ export class UserRepository {
     return this.repo.findOne({
       where: {
         emailToken: token,
+      },
+    });
+  }
+  findByPassportToken(token: string) {
+    return this.repo.findOne({
+      where: {
+        passwordRestToken: token,
       },
     });
   }

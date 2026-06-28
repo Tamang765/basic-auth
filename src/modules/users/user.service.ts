@@ -3,9 +3,14 @@ import { UserRepository } from "./repositories/user.repository.js";
 import type { LoginDTO } from "./validation/login.schema.js";
 import type { UserDTO } from "./validation/user.schema.js";
 
+import crypto from "crypto";
+import {
+  ApplicationError,
+  ConflictError,
+  NotFoundError,
+} from "../../middleware/error-handler.js";
 import { generateToken } from "../../utils/generate-token.js";
 import { TokenService } from "../../utils/jwt.js";
-import { logger } from "../../utils/logger.js";
 import type { sessionRepo } from "../sessions/Repositories/session.repository.js";
 
 export class UserService {
@@ -50,7 +55,7 @@ export class UserService {
         emailTokenExpiresAt: user.emailTokenExpiresAt,
       };
     } catch (error) {
-      throw new Error(error);
+      throw new Error(String(error));
     }
   }
 
@@ -58,7 +63,6 @@ export class UserService {
     try {
       const { email, password } = data;
       const user = await this.userRepo.findByEmail(email);
-      console.log(user);
       if (!user) {
         throw new Error("Invalid Credentials");
       }
@@ -69,24 +73,32 @@ export class UserService {
         throw new Error("Invalid credentials");
       }
 
-      const token = await this.tokenService.generateTokens(user);
+      const safeUser = await this.tokenService.sanitizeUser(user);
 
-      const newUser = await this.tokenService.sanitizeUser(user);
-      const hashedRefreshToken = await bcrypt.hash(token.refreshToken, 12);
-
-      const refactoredUserData = {
-        userId: newUser.id,
-        refreshToken: hashedRefreshToken,
+      const session = await this.sessionRepo.create({
+        userId: safeUser.id,
         isValid: true,
-      };
-      await this.sessionRepo.create(refactoredUserData);
+      });
+
+      // generate tokens using session.id
+      const tokens = await this.tokenService.generateTokens({
+        userId: safeUser.id,
+        sessionId: session.id,
+      });
+
+      const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 12);
+
+      await this.sessionRepo.update(session.id, {
+        refreshToken: hashedRefreshToken,
+      });
+
       return {
-        user: newUser,
-        token,
+        user: safeUser,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       };
     } catch (error) {
-      logger.error(error, "error login");
-      throw new Error(error);
+      throw new Error(String(error));
     }
   }
 
@@ -94,41 +106,29 @@ export class UserService {
     try {
       const decoded = await this.tokenService.verifyRefreshToken(token);
 
-      console.log(decoded, "kxa");
       if (!decoded) {
         throw new Error("Not Verified");
       }
 
-      const sessionUser = await this.sessionRepo.findByUserId(decoded.id);
-      console.log(sessionUser, "sessionUser");
-      let validSession = null;
-      for (const sessions of sessionUser) {
-        console.log(token, sessions.refreshToken, "asd");
-        const match = await bcrypt.compare(token, sessions.refreshToken);
-        if (match) {
-          validSession = sessions;
-          break;
-        }
+      const session = await this.sessionRepo.findBySessionId(decoded.sessionId);
+      if (!session) {
+        throw new Error("Invalid session");
       }
 
-      if (!validSession) {
-        throw new Error("Invalid Refresh Token");
-      }
-
-      const newToken = await this.tokenService.generateTokens(decoded);
+      const newTokens = await this.tokenService.generateTokens({
+        userId: decoded.userId,
+        sessionId: decoded.sessionId,
+      });
       return {
-        accessToken: newToken.accessToken,
-        refreshToken: newToken.refreshToken,
+        accessToken: newTokens.accessToken,
+        refreshToken: newTokens.refreshToken,
       };
     } catch (error) {
-      throw new Error(error);
+      throw new Error(String(error));
     }
   }
 
   async verifyEmail(token: string) {
-    // const { hash } = generateToken();
-
-    // console.log(hash);
     const isUser = await this.userRepo.findByEmailToken(token);
     if (!isUser) {
       throw new Error("Invalid token");
@@ -169,7 +169,7 @@ export class UserService {
       });
       await this.sendVerificationEmail(email, token);
     } catch (error) {
-      throw new Error(error);
+      throw new ApplicationError(String(error));
     }
   }
 
@@ -196,13 +196,71 @@ export class UserService {
         passwordRestToken: hash,
         passwordRestTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
       });
-      await this.sendPasswordReset(email, token);
+      const response = await this.sendPasswordReset(email, token);
+      return response;
     } catch (error) {}
   }
   private async sendPasswordReset(email: string, token: string) {
     try {
       const link = `${process.env.CLIENT_URL}/forgot-password/${token}`;
       // resend mail
+    } catch (error) {}
+  }
+  async resetPassword(token: string, password: string) {
+    try {
+      const hash = crypto.createHash("sha256").update(token).digest("hex");
+
+      const user = await this.userRepo.findByPassportToken(hash);
+
+      if (!user) {
+        throw new ConflictError("Token is not valid");
+      }
+
+      if (user.passwordRestTokenExpiresAt) {
+        const isExpire = Date.now() < user.passwordRestTokenExpiresAt.getTime();
+        if (isExpire) {
+          return;
+        }
+      }
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      await this.userRepo.update(user.id, {
+        password: passwordHash,
+      });
+    } catch (error) {}
+  }
+
+  async changePassword(
+    userId: string,
+    sessionId: string,
+    oldpassword: string,
+    newpassword: string,
+  ) {
+    try {
+      const user = await this.userRepo.findById(userId);
+
+      if (!user) {
+        throw new NotFoundError("User not found");
+      }
+      const isMatch = bcrypt.compare(oldpassword, user.password);
+
+      if (!isMatch) {
+        throw new ConflictError("Current password is incorrect");
+      }
+
+      const hashPassword = await bcrypt.hash(newpassword, 10);
+
+      await this.userRepo.update(userId, {
+        password: hashPassword,
+      });
+
+      await this.sessionRepo.invalidateOther(userId, sessionId);
+      const { accessToken } = await this.tokenService.generateTokens({
+        userId: user.id,
+        sessionId: sessionId,
+      });
+
+      return { accessToken };
     } catch (error) {}
   }
 }

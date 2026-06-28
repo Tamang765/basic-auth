@@ -27,7 +27,6 @@ export const authMiddleware = (
     const token = header.split(" ")[1];
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    console.log(decoded, "decoded");
     req.user = decoded;
     next();
   } catch (error) {

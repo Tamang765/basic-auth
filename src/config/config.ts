@@ -7,7 +7,7 @@ type Config = {
     secret: string;
     expire: string;
     refresh: string;
-    refreshExpire: string;
+    refreshExpire: string | number;
   };
   apiPrefix: string;
   cors: {

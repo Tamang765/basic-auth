@@ -1,32 +1,27 @@
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import config from "../config/config.js";
 import type { UserResponseDTO } from "../modules/users/validation/user.schema.js";
-import { logger } from "./logger.js";
 
 export type RefreshTokenPayload = JwtPayload & {
-  id: string;
-  email: string;
-  name: string;
+  userId: string;
+  sessionId: string;
 };
 
 // type SafeUser = Pick<UserResponseDTO, "id" | "name" | "email">;
 
-export class TokenService {
-  async generateTokens(user: any) {
-    const payload = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    };
+type UserTokenPayload = {
+  userId: string;
+  sessionId: string;
+};
 
-    logger.info(payload, "payloads");
-    //
-    const accessToken = jwt.sign(payload, config.jwt.secret, {
-      expiresIn: config.jwt.expire,
+export class TokenService {
+  async generateTokens(user: UserTokenPayload) {
+    const accessToken = jwt.sign(user, config.jwt.secret, {
+      expiresIn: Number(config.jwt.expire),
     });
 
-    const refreshToken = jwt.sign(payload, config.jwt.secret, {
-      expiresIn: config.jwt.refreshExpire,
+    const refreshToken = jwt.sign(user, config.jwt.secret, {
+      expiresIn: Number(config.jwt.refreshExpire),
     });
 
     return { accessToken, refreshToken };
@@ -39,9 +34,7 @@ export class TokenService {
     return rest;
   }
 
-  async verifyRefreshToken(
-    token: string,
-  ): Promise<Omit<UserResponseDTO, "password"> | null> {
+  async verifyRefreshToken(token: string): Promise<UserTokenPayload | null> {
     const decoded = jwt.verify(token, config.jwt.secret);
 
     // runtime guard
@@ -50,9 +43,8 @@ export class TokenService {
     const payload = decoded as RefreshTokenPayload;
 
     return {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name,
+      userId: payload.id,
+      sessionId: payload.sessionId,
     };
   }
 }

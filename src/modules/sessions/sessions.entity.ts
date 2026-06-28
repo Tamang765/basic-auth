@@ -18,5 +18,5 @@ export class Sessions {
   declare userId: string;
 
   @Column("varchar", { length: 500 })
-  declare refreshToken: string;
+  declare refreshToken: string | null;
 }

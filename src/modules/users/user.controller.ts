@@ -60,9 +60,25 @@ export class UserController {
   };
 
   reset = async (req: Request, res: Response) => {
-    await this.userService.forgotPassword(req.body.email);
+    const response = await this.userService.forgotPassword(req.body.email);
     return res.status(200).json({
       status: true,
+      data: response,
+    });
+  };
+
+  changePassword = async (req: Request, res: Response) => {
+    const { userId, sessionId } = req.user;
+    const { oldPassword, newPassword } = req.body;
+    const response = await this.userService.changePassword(
+      userId,
+      sessionId,
+      oldPassword,
+      newPassword,
+    );
+    return res.status(200).json({
+      status: true,
+      data: response,
     });
   };
 }
