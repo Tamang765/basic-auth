@@ -144,4 +144,65 @@ export class UserService {
       emailTokenExpiresAt: null,
     });
   }
+
+  async resendVerification(email: string) {
+    try {
+      const user = await this.userRepo.findByEmail(email);
+      if (!user) {
+        return;
+      }
+      if (user.isVerified) {
+        return;
+      }
+
+      if (user.emailTokenExpiresAt) {
+        const expire = Date.now() - user.emailTokenExpiresAt.getTime();
+        if (expire > 60_000) {
+          return;
+        }
+      }
+
+      const { token, hash } = generateToken();
+      await this.userRepo.update(user.id, {
+        emailToken: hash,
+        emailTokenExpiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      });
+      await this.sendVerificationEmail(email, token);
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  private async sendVerificationEmail(email: string, token: string) {
+    const user = await this.userRepo.findByEmail(email);
+    if (!user) {
+      throw new Error("user is not registered in this system");
+    }
+    const link = `${process.env.CLIENT_URL}/verify/${token}`;
+
+    // resend
+  }
+
+  async forgotPassword(email: string) {
+    try {
+      const user = await this.userRepo.findByEmail(email);
+      if (!user) {
+        return;
+      }
+
+      const { token, hash } = generateToken();
+
+      await this.userRepo.update(user.id, {
+        passwordRestToken: hash,
+        passwordRestTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+      await this.sendPasswordReset(email, token);
+    } catch (error) {}
+  }
+  private async sendPasswordReset(email: string, token: string) {
+    try {
+      const link = `${process.env.CLIENT_URL}/forgot-password/${token}`;
+      // resend mail
+    } catch (error) {}
+  }
 }

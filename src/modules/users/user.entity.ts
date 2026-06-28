@@ -29,6 +29,12 @@ export class User {
   @Column("date", { nullable: true })
   declare emailTokenExpiresAt: Date | null;
 
+  @Column("varchar", { nullable: true })
+  declare passwordRestToken: string | null;
+
+  @Column("date", { nullable: true })
+  declare passwordRestTokenExpiresAt: Date | null;
+
   @CreateDateColumn()
   declare createdAt: Date;
 

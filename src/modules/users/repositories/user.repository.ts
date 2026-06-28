@@ -16,7 +16,6 @@ export class UserRepository {
   }
 
   findByEmailToken(token: string) {
-    console.log(token, "tokenss");
     return this.repo.findOne({
       where: {
         emailToken: token,

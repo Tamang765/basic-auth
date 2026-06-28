@@ -51,4 +51,18 @@ export class UserController {
       data: response,
     });
   };
+
+  resend = async (req: Request, res: Response) => {
+    await this.userService.resendVerification(req.body.email);
+    return res.status(200).json({
+      status: true,
+    });
+  };
+
+  reset = async (req: Request, res: Response) => {
+    await this.userService.forgotPassword(req.body.email);
+    return res.status(200).json({
+      status: true,
+    });
+  };
 }
