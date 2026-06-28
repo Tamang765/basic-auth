@@ -5,8 +5,9 @@ type Config = {
   port: number | string;
   jwt: {
     secret: string;
-
     expire: string;
+    refresh: string;
+    refreshExpire: string | number;
   };
   apiPrefix: string;
   cors: {
@@ -27,7 +28,9 @@ const config: Config = {
   port: process.env.PORT || 5005,
   jwt: {
     secret: process.env.JWT_SECRET || "your-secret-key",
-    expire: "6d" as const,
+    expire: "5hr" as const,
+    refresh: process.env.REFRESH_TOKEN || "secret_refresh_key",
+    refreshExpire: "6d",
   },
   apiPrefix: process.env.API_PREFIX || "/v1/api",
   cors: {

@@ -20,6 +20,21 @@ export class User {
   @Column("varchar", { length: 100 })
   declare password: string;
 
+  @Column("bool", { default: false })
+  declare isVerified: boolean;
+
+  @Column("varchar", { nullable: true })
+  declare emailToken: string | null;
+
+  @Column("date", { nullable: true })
+  declare emailTokenExpiresAt: Date | null;
+
+  @Column("varchar", { nullable: true })
+  declare passwordRestToken: string | null;
+
+  @Column("date", { nullable: true })
+  declare passwordRestTokenExpiresAt: Date | null;
+
   @CreateDateColumn()
   declare createdAt: Date;
 
