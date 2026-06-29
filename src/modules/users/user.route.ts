@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth-middleware.js";
+import { authLimiter } from "../../middleware/rate-limiter.js";
 import { validate } from "../../middleware/validate.js";
 import { UserModule } from "./interfaces/user.module.js";
 import { changePasswordSchema } from "./validation/change-password.schema.js";
@@ -10,7 +11,12 @@ import { userSchema } from "./validation/user.schema.js";
 const router = Router();
 
 router.post("/register", validate(userSchema), UserModule.controller.register);
-router.post("/login", validate(loginSchema), UserModule.controller.login);
+router.post(
+  "/login",
+  authLimiter,
+  validate(loginSchema),
+  UserModule.controller.login,
+);
 router.get("/me", authMiddleware, UserModule.controller.getMe);
 router.post("/refresh", UserModule.controller.refresh);
 router.post(`/verify/:id`, authMiddleware, UserModule.controller.verify);
